@@ -5,6 +5,10 @@ import gzip
 import os.path
 import random
 
+import seaborn as sns
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
 
 def symbol2ensemble(symbol):
     '''
@@ -100,7 +104,7 @@ def get_all_gene_symbols(thePath=''):
 def get_random_gene_names(filename='hgnc_symbol_set.txt', numGenes=10):
     #load all the lines in file into genes list, but strip newline/whitespace first
     with open('hgnc_symbol_set.txt') as f:
-        genes = [line.rstrip() for line in f]
+        genes = [line.rstrip() for line in f] 
     random.shuffle(genes)
     print(genes[:numGenes])
     random_genes = [utilityOT.get_ensid(x) for x in genes[:numGenes] if get_ensid(x) is not None]
@@ -186,6 +190,82 @@ def get_disease_and_target_info(disease,targets,fileName='',baseUrl='http://loca
     diseaseResults.close()
     
     return r.text
+
+def get_disease_and_target_evidence_count(disease,targets,fileName='',baseUrl='http://localhost:8008/api/latest/'):
+    disease_efo = get_efoid(disease, baseUrl)
+    
+    disease_csv = {'disease':disease_efo,
+                   'target':targets,
+          'outputstructure':'flat',
+          'facets':'false',
+          'format':'csv',
+          'size':'10000',
+          'fields':['target.gene_info.symbol',
+                    'evidence_count.total',
+                    'evidence_count.datatypes.genetic_association',
+                    'evidence_count.datatypes.somatic_mutation',
+                    'evidence_count.datatypes.known_drug',
+                    'evidence_count.datatypes.affected_pathway',
+                    'evidence_count.datatypes.rna_expression',
+                    'evidence_count.datatypes.literature',
+                    'evidence_count.datatypes.animal_model',
+                    'evidence_count.datasources.gwas_catalog',
+                    'evidence_count.datasources.eva',
+                    'evidence_count.datasources.eva_somatic',
+                    'evidence_count.datasources.gwas_catalog',
+                    'evidence_count.datasources.uniprot',
+                    'evidence_count.datasources.uniprot_literature'],
+          'from':'0',
+          'scorevalue_min':'0'
+          }
+    r = requests.get(baseUrl + 'public/association/filter', params = disease_csv)
+    
+    diseaseResults = open(disease + '_targets_'+ fileName+ '.csv','w')
+    diseaseResults.write(r.text)
+    diseaseResults.close()
+    
+    return r.text
+
+def get_mendelian_count (row):
+    mendelian = row['uniprot'] + row['uniprot_literature'] + row['eva'] + row['eva_somatic']
+    return mendelian
+
+def print_csv_table():
+    
+
+    '''
+    Show data Frame as heatmap
+    '''
+def show_heatmap(df, columns):
+    #Show heatmap for the df for parkinsonTextCSV
+    # copying from Theo.. 
+    f, ax = plt.subplots(figsize=(columns,5))
+    ax = sns.heatmap(df.iloc[:columns,0:columns], cmap="Blues", annot=True, linewidths=2)
+    # fix labels
+    labels = [item.get_text().split('.')[-1] for item in ax.get_xticklabels()]
+    t = ax.set_xticklabels(labels)
+    print "DONE"
+    return None
+
+def edit_header(filename, numColumns):
+    readFrom = open(filename, 'r')    
+    writeTo = open('edited_header_' + filename, 'w+')
+     
+    theLine = readFrom.readline()
+    theColumns = theLine.split(",", numColumns)
+    labels = [item.split('.')[-1] for item in theColumns]
+    newEditedLine = ",".join( labels )
+    print newEditedLine
+    writeTo.write(newEditedLine);
+    while theLine != '':
+        theLine = readFrom.readline()
+        #print theLine
+        writeTo.write(theLine)
+     
+    readFrom.close()
+    writeTo.close()    
+    return None
+     
 #def save_to_file_with_requests():   
 #     with open('output.jpg', 'wb') as handle:
 #        response = requests.get('http://www.example.com/image.jpg', stream=True)
