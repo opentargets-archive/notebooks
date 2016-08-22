@@ -27,9 +27,14 @@ def get_ensid(genesymbol, baseUrl='http://localhost:8008/api/latest/'):
     geneId=''
     r = requests.get(baseUrl + 'public/search', 
                      params={'q':genesymbol,'size':1,'filter':'gene'})
-    result = r.json()
-    if result["data"][0]["data"]["approved_symbol"] == genesymbol:
-         geneId = result["data"][0]["id"]
+    if r.status_code == 200:
+        result = r.json()
+        if len(result["data"]) > 0:
+            if result["data"][0]["data"]["approved_symbol"] == genesymbol:
+                geneId = result["data"][0]["id"]
+    else:
+        print 'got status_code=' + r.status_code
+    print 'genesymbol=' + genesymbol + ' geneId = ' +geneId
     return geneId
 
 
@@ -87,14 +92,14 @@ def get_all_gene_symbols(thePath=''):
     theLine = readFrom.readline()
     while theLine != '':
         theLine = readFrom.readline()
-        print theLine
+        #print theLine
         #take second column
         theColumns = theLine.split("\t", 2)
         if len(theColumns) >=2:
             secondColumn =  theColumns[1]
         
             if secondColumn.endswith('withdrawn') == False:
-                print secondColumn
+                #print secondColumn
                 writeTo.write(secondColumn + "\n")
     
     readFrom.close()
@@ -106,10 +111,11 @@ def get_random_gene_names(filename='hgnc_symbol_set.txt', numGenes=10):
     with open('hgnc_symbol_set.txt') as f:
         genes = [line.rstrip() for line in f] 
     random.shuffle(genes)
-    print(genes[:numGenes])
-    random_genes = [utilityOT.get_ensid(x) for x in genes[:numGenes] if get_ensid(x) is not None]
-    print random_genes
-    return ramdom_genes
+    #print(genes[:numGenes])
+    #random_genes = [utilityOT.get_ensid(x) for x in genes[:numGenes] if get_ensid(x) is not None]
+    random_genes = genes[:numGenes]
+    #print random_genes
+    return random_genes
 
 '''
 Take a list of genes and write them to a file one gene 
@@ -128,8 +134,12 @@ def read_genes_from_file(filename='genelist_pd.txt'):
 '''
 Take list of gene names and return a list of corresponding ENS gene codes
 '''
-def get_ens_genes(geneNames):
-    ens_genes = [get_ensid(x) for x in geneNames if get_ensid(x) is not None]    
+def get_ens_genes(geneNames, baseUrl='http://localhost:8008/api/latest/'):
+    ens_genes = []
+    for x in geneNames: 
+        ensid = get_ensid(x, baseUrl) 
+        if ensid is not None:
+            ens_genes.append(ensid)   
     return ens_genes
 
 def get_disease_info(disease, baseUrl='http://localhost:8008/api/latest/'):
@@ -184,14 +194,14 @@ def get_disease_and_target_info(disease,targets,fileName='',baseUrl='http://loca
           'scorevalue_min':'0'
           }
     r = requests.get(baseUrl + 'public/association/filter', params = disease_csv)
-    
-    diseaseResults = open(disease + '_targets_'+ fileName+ '.csv','w')
-    diseaseResults.write(r.text)
-    diseaseResults.close()
+    if r.status_code == 200:
+        diseaseResults = open(disease + '_targets_'+ fileName+ '.csv','w')
+        diseaseResults.write(r.text)
+        diseaseResults.close()
     
     return r.text
 
-def get_disease_and_target_evidence_count(disease,targets,fileName='',baseUrl='http://localhost:8008/api/latest/'):
+def get_disease_and_target_evidence_count(disease,targets,fileName='disease_target_count',baseUrl='http://localhost:8008/api/latest/'):
     disease_efo = get_efoid(disease, baseUrl)
     
     disease_csv = {'disease':disease_efo,
@@ -212,18 +222,19 @@ def get_disease_and_target_evidence_count(disease,targets,fileName='',baseUrl='h
                     'evidence_count.datasources.gwas_catalog',
                     'evidence_count.datasources.eva',
                     'evidence_count.datasources.eva_somatic',
-                    'evidence_count.datasources.gwas_catalog',
                     'evidence_count.datasources.uniprot',
                     'evidence_count.datasources.uniprot_literature'],
           'from':'0',
           'scorevalue_min':'0'
           }
     r = requests.get(baseUrl + 'public/association/filter', params = disease_csv)
-    
-    diseaseResults = open(disease + '_targets_'+ fileName+ '.csv','w')
-    diseaseResults.write(r.text)
-    diseaseResults.close()
-    
+    print "response status_code = " +str( r.status_code)
+    if r.status_code == 200: 
+        diseaseResults = open(fileName+'.csv','w')
+        diseaseResults.write(r.text)
+        diseaseResults.close()
+    else: 
+        print r.text
     return r.text
 
 def get_mendelian_count (row):
@@ -236,20 +247,22 @@ def print_csv_table():
     '''
     Show data Frame as heatmap
     '''
-def show_heatmap(df, columns):
+def show_heatmap(df, columns, height=5):
     #Show heatmap for the df for parkinsonTextCSV
     # copying from Theo.. 
-    f, ax = plt.subplots(figsize=(columns,5))
-    ax = sns.heatmap(df.iloc[:columns,0:columns], cmap="Blues", annot=True, linewidths=2)
+    f, ax = plt.subplots(figsize=(columns,height)) #figsize(x,y) - are in inchs
+    #ax = sns.heatmap(df.iloc[:columns,0:columns], cmap="Blues", annot=True, linewidths=2)
+    ax = sns.heatmap(df, cmap="Blues", annot=True, fmt='g', linewidths=2)
     # fix labels
-    labels = [item.get_text().split('.')[-1] for item in ax.get_xticklabels()]
-    t = ax.set_xticklabels(labels)
+    #labels = [item.get_text().split('.')[-1] for item in ax.get_xticklabels()]
+    #labels = [item.get_text().split('.')[-1] for item in ax.get_xticklabels()]
+    #t = ax.set_xticklabels(labels)
     print "DONE"
     return None
 
-def edit_header(filename, numColumns):
-    readFrom = open(filename, 'r')    
-    writeTo = open('edited_header_' + filename, 'w+')
+def edit_header(fileNameFrom, fileNameTo, numColumns):
+    readFrom = open(fileNameFrom, 'r')    
+    writeTo = open( fileNameTo, 'w+')
      
     theLine = readFrom.readline()
     theColumns = theLine.split(",", numColumns)
@@ -259,9 +272,16 @@ def edit_header(filename, numColumns):
     writeTo.write(newEditedLine);
     while theLine != '':
         theLine = readFrom.readline()
+        #theColumns = theLine.split(",", numColumns)
+        #numericColumns = theColumns[1:numColumns]
+        #myValues=[theColumns[0]]; 
+        #for item in numericColumns:
+        #    myIntValue = int(float(item))
+        #    myValues.append(str(myIntValue))
+        #newEditedLine = ",".join( myValues ) 
         #print theLine
+        #writeTo.write(newEditedLine + '\n')
         writeTo.write(theLine)
-     
     readFrom.close()
     writeTo.close()    
     return None
