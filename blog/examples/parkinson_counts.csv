@@ -1,0 +1,6 @@
+target.gene_info.symbol,evidence_count.total,evidence_count.datatypes.genetic_association,evidence_count.datatypes.somatic_mutation,evidence_count.datatypes.known_drug,evidence_count.datatypes.affected_pathway,evidence_count.datatypes.rna_expression,evidence_count.datatypes.literature,evidence_count.datatypes.animal_model,evidence_count.datasources.gwas_catalog,evidence_count.datasources.eva,evidence_count.datasources.eva_somatic,evidence_count.datasources.uniprot,evidence_count.datasources.uniprot_literature
+GPNMB,2.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,1.0,0.0,0.0,0.0,0.0
+RFX4,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0
+MMP1,3.0,0.0,0.0,0.0,0.0,0.0,3.0,0.0,0.0,0.0,0.0,0.0,0.0
+PBX1,1.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0
+IFNAR1,1.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0
