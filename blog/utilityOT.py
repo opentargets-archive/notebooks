@@ -53,7 +53,7 @@ def search_disease(diseasestr,  baseUrl='http://localhost:8008/api/latest/'):
     '''
     create a diseasename.json file with results of the OT search
     '''    
-    #Below is just a sample baseline api call to test that api is working
+   
     durl= baseUrl + 'public/search?size=10&from=0&q=' +diseasestr
     durlResponse=requests.get(durl)
     doutput=durlResponse.json()
