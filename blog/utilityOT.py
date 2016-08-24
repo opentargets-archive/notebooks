@@ -108,7 +108,7 @@ def get_all_gene_symbols(thePath=''):
 
 def get_random_gene_names(filename='hgnc_symbol_set.txt', numGenes=10):
     #load all the lines in file into genes list, but strip newline/whitespace first
-    with open('hgnc_symbol_set.txt') as f:
+    with open(filename) as f:
         genes = [line.rstrip() for line in f] 
     random.shuffle(genes)
     #print(genes[:numGenes])
