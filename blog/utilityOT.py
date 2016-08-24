@@ -257,7 +257,7 @@ def show_heatmap(df, columns, height=5):
     #labels = [item.get_text().split('.')[-1] for item in ax.get_xticklabels()]
     #labels = [item.get_text().split('.')[-1] for item in ax.get_xticklabels()]
     #t = ax.set_xticklabels(labels)
-    print "DONE"
+    #print "DONE"
     return None
 
 def edit_header(fileNameFrom, fileNameTo, numColumns):
