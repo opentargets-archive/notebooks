@@ -32,16 +32,27 @@ def organizeResults(output):
 	dataObject['diseases'] = set()
 	dataObject['targets'] = set()
 	dataObject['classification'] = {}
+	dataObject['associations'] = {}
+	disease = ""
+	target = ""
 
 	for data in output['hits']['hits']:
     
-    		#print json.dumps(data, indent=2)
+		#print json.dumps(data, indent=2)
+		
+		disease = data['_source']['disease']['efo_info']['label']
+		target = data['_source']['target']['gene_info']['symbol']
+		dataObject['diseases'].add(disease)
+		dataObject['targets'].add(target)
+		dataObject['classification']['drug_phase'] = data['_source']['drug']['max_phase_for_all_diseases']['label']
+		dataObject['classification']['drug_molecule'] = data['_source']['drug']['molecule_type']
+		dataObject['classification']['drug_id'] = data['_source']['drug']['id'][0]
 
-    		dataObject['diseases'].add(data['_source']['disease']['efo_info']['label'])
-    		dataObject['targets'].add(data['_source']['target']['gene_info']['symbol'])
-    		dataObject['classification']['drug_phase'] = data['_source']['drug']['max_phase_for_all_diseases']['label']
-    		dataObject['classification']['drug_molecule'] = data['_source']['drug']['molecule_type']
-    		dataObject['classification']['drug_id'] = data['_source']['drug']['id'][0]
+		if target in dataObject['associations']:
+			dataObject['associations'][target].add(disease)
+		else:
+			dataObject['associations'][target] = set()
+			dataObject['associations'][target].add(disease)
 	
 	return dataObject
 
@@ -50,30 +61,27 @@ Display the results in a table
 '''
 def displayResults(myDrug, dataObject):
 
-	html = "<h1>" + myDrug.upper() + "</h1>" + """
-
-	<style>
-	td {
-	    border: 1px solid #ddd;
-	}
-	</style>
-	<table>
-	    <tr style="background-color: grey; color:white; border: 1px solid #ddd">
-		<th>Classification</th>
-		<th>Diseases</th>
-		<th>Targets</th>
-	    </tr>
-	    <tr>
-		<td> - """ + dataObject['classification']['drug_phase'] + "</br> - " + dataObject['classification']['drug_molecule'] + "</br> - " + dataObject['classification']['drug_id'] + """</td>
-		<td> - """ + "</br> - ".join(dataObject['diseases']) + "</td>" + "<td> - " + "</br> - ".join(dataObject['targets']) + "</td>" + """
-
+	html = """ 
+	<head>
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+	</head>
+	<body>
 		
-	    </tr>
-	</table>
+	""" + "<h1>" + myDrug.upper() + "</h1>" + "<small><a href=" + dataObject['classification']['drug_id'] + ">" + dataObject['classification']['drug_id'] + "</a></small></br>" + """
+	<b> """ + dataObject['classification']['drug_phase'] + "&nbsp; &#183; &nbsp;" + dataObject['classification']['drug_molecule'] + "</b>" + """
+	
+	<hr>
+	<div class="row">
+		<div class="col-md-6" style="border-right: 1px solid #eee;"><h3>Diseases</h3></br>&#183; """ + "</br> &#183; ".join(dataObject['diseases']) + """</div>
+		<div class="col-md-6"><h3>Targets</h3></br>&#183; """ + "</br> &#183; ".join(dataObject['targets']) + """</div>	
+	</div>
+	<hr>
+	</body>
 
 	"""
 
 	return html
+
 
 def displayFoamTree(myDrug, dataObject):
 	
@@ -104,8 +112,12 @@ def displayFoamTree(myDrug, dataObject):
 	  </head>
 
 	  <body>
-	  <center><h1>""" + myDrug + """</h1>
-		<div id="visualization" style="width: 800px; height: 500px"></div></center>
+	  
+	""" + "<h1>" + myDrug.upper() + "</h1>" + "<small><a href=" + dataObject['classification']['drug_id'] + ">" + dataObject['classification']['drug_id'] + "</a></small></br>" + """
+	<b> """ + dataObject['classification']['drug_phase'] + "&nbsp; &#183; &nbsp;" + dataObject['classification']['drug_molecule'] + "</b>" + """
+	
+	<hr>
+		<center><div id="visualization" style="width: 800px; height: 500px"></div></center>
 
 		<script src="carrotsearch.foamtree.js"></script>
 		<script>
@@ -123,6 +135,101 @@ def displayFoamTree(myDrug, dataObject):
 	  </body>
 	 """
 		
+	return html
+
+def displayFlareGraph(myDrug, dataObject):
+	
+	targetJSON = {}
+	dataJSON = {'name': myDrug}
+	dataJSON['children'] = []
+
+	for key in dataObject['associations']:
+		targetJSON = {'name': key}
+		targetJSON['children'] = []
+		
+		for target in dataObject['associations'][key]:
+			
+			targetJSON['children'].append({'name': target})
+
+		dataJSON['children'].append(targetJSON)
+
+	html = """
+	<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Flare Dendrogram</title>
+<style>
+
+.node circle {
+  fill: #fff;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+
+.node {
+  font: 10px sans-serif;
+}
+
+.link {
+  fill: none;
+  stroke: #ccc;
+  stroke-width: 1.5px;
+}
+
+</style>
+<body>
+"""+ "<h1>" + myDrug.upper() + "</h1>" + "<small><a href=" + dataObject['classification']['drug_id'] + ">" + dataObject['classification']['drug_id'] + "</a></small></br>" + """
+	<b> """ + dataObject['classification']['drug_phase'] + "&nbsp; &#183; &nbsp;" + dataObject['classification']['drug_molecule'] + "</b>" + """
+	
+	<hr>
+<div id="flare"></div>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script>
+
+var radius = 960 / 2;
+
+var cluster = d3.layout.cluster()
+    .size([360, radius - 120]);
+
+var diagonal = d3.svg.diagonal.radial()
+    .projection(function(d) { return [d.y, d.x / 180 * Math.PI]; });
+
+var svg = d3.select("#flare").append("svg")
+    .attr("width", radius * 2)
+    .attr("height", radius * 2)
+  .append("g")
+    .attr("transform", "translate(" + radius + "," + radius + ")");
+    
+    var root = """ + json.dumps(dataJSON) + """;
+
+  var nodes = cluster.nodes(root);
+
+  var link = svg.selectAll("path.link")
+      .data(cluster.links(nodes))
+    .enter().append("path")
+      .attr("class", "link")
+      .attr("d", diagonal);
+
+  var node = svg.selectAll("g.node")
+      .data(nodes)
+    .enter().append("g")
+      .attr("class", "node")
+      .attr("transform", function(d) { return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")"; })
+
+  node.append("circle")
+      .attr("r", 4.5);
+
+  node.append("text")
+      .attr("dy", ".31em")
+      .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
+      .attr("transform", function(d) { return d.x < 180 ? "translate(8)" : "rotate(180)translate(-8)"; })
+      .text(function(d) { return d.name; });
+
+d3.select(self.frameElement).style("height", radius * 2 + "px");
+
+</script>
+</body>
+	
+	"""
 	return html
 
 def displayNetworkGraph():
@@ -579,10 +686,10 @@ def displayBubbleMenu(myDrug, dataObject):
      }
     </style>
     <script type="text/javascript" src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
-    <title>
-      Bubble Menu
-    </title>
-   
+  """+ "<h1>" + myDrug.upper() + "</h1>" + "<small><a href=" + dataObject['classification']['drug_id'] + ">" + dataObject['classification']['drug_id'] + "</a></small></br>" + """
+	<b> """ + dataObject['classification']['drug_phase'] + "&nbsp; &#183; &nbsp;" + dataObject['classification']['drug_molecule'] + "</b>" + """
+	
+	<hr> 
   <div id="mainBubble" style="height: 652px; width:950px"><svg class="mainBubbleSVG" width="930.24" height="652"></svg></div>
   <script>
   // http://sunsp.net/demo/BubbleMenu/
