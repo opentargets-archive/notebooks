@@ -9,7 +9,8 @@ import seaborn as sns
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-
+from collections import Counter
+from operator import itemgetter
 def symbol2ensemble(symbol):
     '''
     returns ensembl gene id for a gene symbol,
@@ -33,8 +34,8 @@ def get_ensid(genesymbol, baseUrl='http://localhost:8008/api/latest/'):
             if result["data"][0]["data"]["approved_symbol"] == genesymbol:
                 geneId = result["data"][0]["id"]
     else:
-        print 'got status_code=' + r.status_code
-    print 'genesymbol=' + genesymbol + ' geneId = ' +geneId
+        print 'got status_code=' + str(r.status_code)
+    #print 'genesymbol=' + genesymbol + ' geneId = ' +geneId
     return geneId
 
 
@@ -131,6 +132,8 @@ def read_genes_from_file(filename='genelist_pd.txt'):
         genes = [line.rstrip() for line in f]
     
     return genes
+
+
 '''
 Take list of gene names and return a list of corresponding ENS gene codes
 '''
@@ -237,6 +240,30 @@ def get_disease_and_target_evidence_count(disease,targets,fileName='disease_targ
         print r.text
     return r.text
 
+#http://localhost:8008/api/latest/public/evidence/filter?target=ENSG00000113580&disease=EFO_0000270&size=200&datasource=europepmc&expandefo=true
+def get_literature_evidence(disease,targets,fileName='disease_target_evidence',baseUrl='http://localhost:8008/api/latest/'):
+    disease_efo = get_efoid(disease, baseUrl)
+    
+    disease_csv = {'disease':disease_efo,
+                   'target':targets,
+                   'datasource':'europepmc',
+                   'datastructure':'full',
+          'outputstructure':'flat',
+          'facets':'true',
+          'size':'10000',          
+          'from':'0',
+          'scorevalue_min':'0'
+          }
+    r = requests.get(baseUrl + 'public/evidence/filter', params = disease_csv)
+    print "response status_code = " +str( r.status_code)
+    if r.status_code == 200: 
+        diseaseResults = open(fileName+'.json','w')
+        diseaseResults.write(r.text)
+        diseaseResults.close()
+    else: 
+        print r.text
+    return r.json()
+
 def get_mendelian_count (row):
     mendelian = row['uniprot'] + row['uniprot_literature'] + row['eva'] + row['eva_somatic']
     return mendelian
@@ -285,14 +312,109 @@ def edit_header(fileNameFrom, fileNameTo, numColumns):
     readFrom.close()
     writeTo.close()    
     return None
-     
-#def save_to_file_with_requests():   
-#     with open('output.jpg', 'wb') as handle:
-#        response = requests.get('http://www.example.com/image.jpg', stream=True)
-#    
-#        if not response.ok:
-#            # Something went wrong
-#    
-#        for block in response.iter_content(1024):
-#            handle.write(block)   
-    
+
+
+def get_abstracts(query, targetName, fileName):
+    baseUrl ='http://localhost:8000/proxy/www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&resulttype=core&query=' + query
+    result = None
+    r = requests.get(baseUrl)
+    #print "response status_code = " + str(r.status_code)
+    if r.status_code == 200:
+        abstractResults = open(fileName, 'w')
+        r.encoding = "UTF-8"
+        try:
+            abstractResults.write(r.text)
+        except UnicodeEncodeError:
+            pass
+            #print "UnicodeEncodeError for targetName=" + targetName + " query=" + query
+        abstractResults.close()
+        result = r.json()
+    else:
+        print r.text
+    return result
+
+def get_literature_breakdown(folderName, fileName):
+    with open(folderName + fileName) as json_data:
+        parkinsonLiteratureJson = json.load(json_data)
+
+    json.dumps(parkinsonLiteratureJson)
+    targets = {}  # Dictionary with target names for keys
+    for evidence in parkinsonLiteratureJson['data']:
+        targetName = evidence['target']['gene_info']['symbol']
+        if targetName in targets:
+            litRefs = targets[targetName]
+            #print 'found ' + targetName
+        else:
+            targets[targetName] = {};  # Under each target key we will keep pieces of literature that are relevant
+
+        litRefs = targets[targetName]  # this is dictionary with lit_id as key for each paper
+        # stringOfLitRefs = targets[targetName]
+        litRefList = evidence['literature']['references']  # the list of references
+        for litRef in litRefList:
+            url = litRef['lit_id']
+            lit_id = litRef['lit_id'].split("/")[-1]
+            litRefs[lit_id] = ""  # prepopulate with empty data
+
+    #print targets
+
+    for targetName in targets:
+        #print "TargetName =" + targetName
+        litDictionary = targets[targetName]
+        absrtactIds = litDictionary.keys()
+        query = " OR ".join("EXT_ID:" + item for item in absrtactIds)
+        r = get_abstracts(query, targetName, folderName + targetName + ".json")
+        resultList = r['resultList']['result']
+        if resultList is not None:
+            if len(resultList) > 0:
+                for publication in resultList:
+                    #print publication
+                    paper_id = publication['pmid']
+                    #print "paper_id = " + paper_id
+                    litDictionary[paper_id] = publication
+        #print targets
+
+    #print targets
+    return targets
+
+def format_json_for_visualization(targets, fileName):
+    articleList = []
+    startYear = 2016
+    endYear = 2016
+
+    targetNames = targets.keys()
+    for targetName in targetNames:
+        targetDict = {}
+        targetDict["name"] = targetName
+        publications = targets[targetName]
+        articlesYearList = [];  # this will look like this  [[2011, 2], [2013, 3]]
+        articleYears = []
+        total = 0
+        # Publication years for each target
+        for publicationId in publications.keys():
+            print "publicationID = " + publicationId
+            publication = publications[publicationId]
+            if type(publication) is dict:
+                pubYear = int(publication['pubYear'])
+                articleYears.append(pubYear)
+        articleYearsSorted = sorted(articleYears)
+        total = len(articleYears)
+        c = Counter(articleYears)
+        counterSorted = sorted(c.items(), key=itemgetter(0))
+        articlesYearList = [list(theTuple) for theTuple in counterSorted]
+        if startYear > articleYearsSorted[0]:
+            startYear = articleYearsSorted[0]
+        if endYear < articleYearsSorted[-1]:
+            endYear = articleYearsSorted[-1]
+        targetDict["articles"] = articlesYearList
+        targetDict["total"] = total
+        articleList.append(targetDict)
+
+    json_article_list_string = json.dumps(articleList)
+    json_article_list = json.loads(json_article_list_string)
+    with open('fileName', 'w') as outfile:
+        json.dump(json_article_list, outfile)
+    #print startYear
+    #print endYear
+
+    return [startYear, endYear]
+

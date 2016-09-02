@@ -1,0 +1,12 @@
+target.gene_info.symbol,evidence_count.total,evidence_count.datatypes.genetic_association,evidence_count.datatypes.somatic_mutation,evidence_count.datatypes.known_drug,evidence_count.datatypes.affected_pathway,evidence_count.datatypes.rna_expression,evidence_count.datatypes.literature,evidence_count.datatypes.animal_model,evidence_count.datasources.gwas_catalog,evidence_count.datasources.eva,evidence_count.datasources.eva_somatic,evidence_count.datasources.uniprot,evidence_count.datasources.uniprot_literature
+OCA2,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0
+KCNA3,1.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+PPARD,9.0,0.0,0.0,0.0,0.0,0.0,9.0,0.0,0.0,0.0,0.0,0.0,0.0
+SOD2,7.0,0.0,0.0,0.0,0.0,0.0,7.0,0.0,0.0,0.0,0.0,0.0,0.0
+DCC,3.0,0.0,0.0,0.0,0.0,0.0,3.0,0.0,0.0,0.0,0.0,0.0,0.0
+CALR,2.0,0.0,0.0,0.0,0.0,0.0,2.0,0.0,0.0,0.0,0.0,0.0,0.0
+NTM,1.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0
+EPHX1,1.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0
+HSPB1,3.0,0.0,0.0,0.0,0.0,0.0,3.0,0.0,0.0,0.0,0.0,0.0,0.0
+ATP1B1,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+PUM1,1.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0
